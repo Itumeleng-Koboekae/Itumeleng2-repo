@@ -1,5 +1,5 @@
 -- Create Database if it doesn't exist
-IF NOT EXISTS (SELECT * FROM sys.databases WHERE name = 'AutoTest_IM_27March')
+IF NOT EXISTS (SELECT * FROM sys.databases WHERE name = 'AutoTest_IM_27March1')
 BEGIN
     CREATE DATABASE AutoTest_IM_27March1;
 END
