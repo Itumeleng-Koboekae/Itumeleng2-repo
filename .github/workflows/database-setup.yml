@@ -10,21 +10,35 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      - name: Detect Ubuntu version
+        id: detect-ubuntu
+        run: |
+          UBUNTU_VERSION=$(lsb_release -rs)
+          echo "UBUNTU_VERSION=${UBUNTU_VERSION}" >> $GITHUB_ENV
+          if [[ "$UBUNTU_VERSION" == "22.04" ]]; then
+            echo "UBUNTU_CODENAME=jammy" >> $GITHUB_ENV
+          elif [[ "$UBUNTU_VERSION" == "24.04" ]]; then
+            echo "UBUNTU_CODENAME=noble" >> $GITHUB_ENV
+          fi
+
       - name: Install prerequisites
         run: |
           sudo apt-get update
           sudo apt-get install -y curl gnupg
 
-      - name: Clean up existing Microsoft configurations
-        run: |
-          sudo rm -f /usr/share/keyrings/microsoft*.gpg
-          sudo rm -f /etc/apt/sources.list.d/microsoft*.list
-          sudo rm -f /etc/apt/sources.list.d/mssql*.list
-
       - name: Add Microsoft SQL Server repository
         run: |
+          if [[ "${{ env.UBUNTU_VERSION }}" == "24.04" ]]; then
+            echo "Ubuntu 24.04 detected - using 22.04 packages as fallback"
+            REPO_URL="https://packages.microsoft.com/ubuntu/22.04/prod"
+            CODENAME="jammy"
+          else
+            REPO_URL="https://packages.microsoft.com/ubuntu/${{ env.UBUNTU_VERSION }}/prod"
+            CODENAME="${{ env.UBUNTU_CODENAME }}"
+          fi
+          
           curl -sSL https://packages.microsoft.com/keys/microsoft.asc | sudo gpg --dearmor -o /usr/share/keyrings/microsoft.gpg
-          echo "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft.gpg] https://packages.microsoft.com/ubuntu/$(lsb_release -rs)/prod $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/microsoft.list
+          echo "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft.gpg] $REPO_URL $CODENAME main" | sudo tee /etc/apt/sources.list.d/mssql-release.list
 
       - name: Install SQL Server tools
         run: |
@@ -63,21 +77,35 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      - name: Detect Ubuntu version
+        id: detect-ubuntu
+        run: |
+          UBUNTU_VERSION=$(lsb_release -rs)
+          echo "UBUNTU_VERSION=${UBUNTU_VERSION}" >> $GITHUB_ENV
+          if [[ "$UBUNTU_VERSION" == "22.04" ]]; then
+            echo "UBUNTU_CODENAME=jammy" >> $GITHUB_ENV
+          elif [[ "$UBUNTU_VERSION" == "24.04" ]]; then
+            echo "UBUNTU_CODENAME=noble" >> $GITHUB_ENV
+          fi
+
       - name: Install prerequisites
         run: |
           sudo apt-get update
           sudo apt-get install -y curl gnupg
 
-      - name: Clean up existing Microsoft configurations
-        run: |
-          sudo rm -f /usr/share/keyrings/microsoft*.gpg
-          sudo rm -f /etc/apt/sources.list.d/microsoft*.list
-          sudo rm -f /etc/apt/sources.list.d/mssql*.list
-
       - name: Add Microsoft SQL Server repository
         run: |
+          if [[ "${{ env.UBUNTU_VERSION }}" == "24.04" ]]; then
+            echo "Ubuntu 24.04 detected - using 22.04 packages as fallback"
+            REPO_URL="https://packages.microsoft.com/ubuntu/22.04/prod"
+            CODENAME="jammy"
+          else
+            REPO_URL="https://packages.microsoft.com/ubuntu/${{ env.UBUNTU_VERSION }}/prod"
+            CODENAME="${{ env.UBUNTU_CODENAME }}"
+          fi
+          
           curl -sSL https://packages.microsoft.com/keys/microsoft.asc | sudo gpg --dearmor -o /usr/share/keyrings/microsoft.gpg
-          echo "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft.gpg] https://packages.microsoft.com/ubuntu/$(lsb_release -rs)/prod $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/microsoft.list
+          echo "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft.gpg] $REPO_URL $CODENAME main" | sudo tee /etc/apt/sources.list.d/mssql-release.list
 
       - name: Install SQL Server tools
         run: |
