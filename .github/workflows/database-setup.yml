@@ -6,7 +6,6 @@ jobs:
   dev-deployment:
     name: Deploy to DEV
     runs-on: ubuntu-latest
-    environment: Development
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -66,7 +65,6 @@ jobs:
     needs: dev-deployment
     if: success()
     runs-on: ubuntu-latest
-    environment: Production
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
