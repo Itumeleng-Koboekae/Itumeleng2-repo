@@ -13,7 +13,7 @@ jobs:
       - name: Install prerequisites
         run: |
           sudo apt-get update
-          sudo apt-get install -y curl gnupg lsb-release
+          sudo apt-get install -y curl gnupg
 
       - name: Add Microsoft SQL Server repository
         run: |
@@ -44,9 +44,7 @@ jobs:
 
       - name: Test DEV SQL Server connection
         run: |
-          echo "Testing connection to DEV server: $DEV_SQL_SERVER"
-          /opt/mssql-tools/bin/sqlcmd -S "$DEV_SQL_SERVER" -U "$DEV_SQL_USER" -P "$DEV_SQL_PASSWORD" -Q "SELECT @@VERSION AS sql_version, DB_NAME() AS current_db;" -b -o test_output.log || echo "Connection test failed"
-          echo "Connection test output:"
+          /opt/mssql-tools/bin/sqlcmd -S "$DEV_SQL_SERVER" -U "$DEV_SQL_USER" -P "$DEV_SQL_PASSWORD" -Q "SELECT 1 AS connection_test;" -b -o test_output.log
           cat test_output.log
         env:
           DEV_SQL_SERVER: ${{ secrets.DEV_SQL_SERVER }}
@@ -55,20 +53,8 @@ jobs:
 
       - name: Run SQL Script on DEV
         run: |
-          echo "Starting DEV database deployment"
-          echo "Using server: $DEV_SQL_SERVER"
-          echo "Using user: $DEV_SQL_USER"
-          echo "Executing script: setup.sql"
-          
-          /opt/mssql-tools/bin/sqlcmd -S "$DEV_SQL_SERVER" -U "$DEV_SQL_USER" -P "$DEV_SQL_PASSWORD" -d master -i setup.sql -b -o sql_output.log || echo "SQL script execution failed"
-          
-          echo "Script execution output:"
+          /opt/mssql-tools/bin/sqlcmd -S "$DEV_SQL_SERVER" -U "$DEV_SQL_USER" -P "$DEV_SQL_PASSWORD" -d master -i setup.sql -b -o sql_output.log
           cat sql_output.log
-          
-          # Verify database was created
-          echo "Verifying database creation:"
-          /opt/mssql-tools/bin/sqlcmd -S "$DEV_SQL_SERVER" -U "$DEV_SQL_USER" -P "$DEV_SQL_PASSWORD" -Q "SELECT name FROM sys.databases WHERE name NOT IN ('master', 'tempdb', 'model', 'msdb');" -b -o db_check.log
-          cat db_check.log
         env:
           DEV_SQL_SERVER: ${{ secrets.DEV_SQL_SERVER }}
           DEV_SQL_USER: ${{ secrets.DEV_SQL_USER }}
@@ -86,7 +72,7 @@ jobs:
       - name: Install prerequisites
         run: |
           sudo apt-get update
-          sudo apt-get install -y curl gnupg lsb-release
+          sudo apt-get install -y curl gnupg
 
       - name: Add Microsoft SQL Server repository
         run: |
@@ -116,9 +102,7 @@ jobs:
 
       - name: Test PROD SQL Server connection
         run: |
-          echo "Testing connection to PROD server: $PROD_SQL_SERVER"
-          /opt/mssql-tools/bin/sqlcmd -S "$PROD_SQL_SERVER" -U "$PROD_SQL_USER" -P "$PROD_SQL_PASSWORD" -Q "SELECT @@VERSION AS sql_version, DB_NAME() AS current_db;" -o test_output.log || echo "Connection test failed"
-          echo "Connection test output:"
+          /opt/mssql-tools/bin/sqlcmd -S "$PROD_SQL_SERVER" -U "$PROD_SQL_USER" -P "$PROD_SQL_PASSWORD" -Q "SELECT 1 AS connection_test;" -o test_output.log || true
           cat test_output.log
         env:
           PROD_SQL_SERVER: ${{ secrets.PROD_SQL_SERVER }}
@@ -127,20 +111,8 @@ jobs:
 
       - name: Run SQL Script on PROD
         run: |
-          echo "Starting PROD database deployment"
-          echo "Using server: $PROD_SQL_SERVER"
-          echo "Using user: $PROD_SQL_USER"
-          echo "Executing script: setup.sql"
-          
-          /opt/mssql-tools/bin/sqlcmd -S "$PROD_SQL_SERVER" -U "$PROD_SQL_USER" -P "$PROD_SQL_PASSWORD" -d master -i setup.sql -o sql_output.log || echo "SQL script execution failed"
-          
-          echo "Script execution output:"
+          /opt/mssql-tools/bin/sqlcmd -S "$PROD_SQL_SERVER" -U "$PROD_SQL_USER" -P "$PROD_SQL_PASSWORD" -d master -i setup.sql -b -o sql_output.log
           cat sql_output.log
-          
-          # Verify database was created
-          echo "Verifying database creation:"
-          /opt/mssql-tools/bin/sqlcmd -S "$PROD_SQL_SERVER" -U "$PROD_SQL_USER" -P "$PROD_SQL_PASSWORD" -Q "SELECT name FROM sys.databases WHERE name NOT IN ('master', 'tempdb', 'model', 'msdb');" -o db_check.log
-          cat db_check.log
         env:
           PROD_SQL_SERVER: ${{ secrets.PROD_SQL_SERVER }}
           PROD_SQL_USER: ${{ secrets.PROD_SQL_USER }}
