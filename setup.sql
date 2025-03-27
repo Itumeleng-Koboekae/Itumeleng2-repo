@@ -1,12 +1,12 @@
 -- Create Database if it doesn't exist
-IF NOT EXISTS (SELECT * FROM sys.databases WHERE name = 'Test3DB')
+IF NOT EXISTS (SELECT * FROM sys.databases WHERE name = 'AutoTest1DB')
 BEGIN
-    CREATE DATABASE Test3DB;
+    CREATE DATABASE AutoTest1DB;
 END
 GO
 
--- Switch to Test3DB
-USE Test3DB;
+-- Switch to AutoTest1DB
+USE AutoTest1DB;
 GO
 
 -- Create or update Stored Procedure
