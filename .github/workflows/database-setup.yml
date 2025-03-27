@@ -1,0 +1,109 @@
+name: Database Deployment Pipeline
+
+on: [push]
+
+jobs:
+  dev-deployment:
+    name: Deploy to DEV
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y curl apt-transport-https software-properties-common gnupg ca-certificates
+
+      - name: Setup Microsoft repository and key
+        run: |
+          sudo rm -f /usr/share/keyrings/microsoft-prod.gpg
+          sudo rm -f /etc/apt/sources.list.d/microsoft-prod.list
+          curl -sSL https://packages.microsoft.com/config/ubuntu/$(lsb_release -rs)/prod.list | sudo tee /etc/apt/sources.list.d/mssql-release.list
+          sudo curl -sSL https://packages.microsoft.com/keys/microsoft.asc -o /usr/share/keyrings/microsoft-prod.gpg
+          if [ ! -s /usr/share/keyrings/microsoft-prod.gpg ]; then
+            echo "Error: GPG key file is empty or missing"
+            exit 1
+          fi
+
+      - name: Update apt
+        run: sudo apt-get update
+
+      - name: Install SQL Server tools
+        run: |
+          sudo ACCEPT_EULA=Y apt-get install -y mssql-tools unixodbc-dev
+          echo 'export PATH="$PATH:/opt/mssql-tools/bin"' >> ~/.bashrc
+          source ~/.bashrc
+
+      - name: Verify SQLCMD installation
+        run: sqlcmd -?
+
+      - name: Test DEV SQL Server connection
+        run: |
+          sqlcmd -S "$DEV_SQL_SERVER" -U "$DEV_SQL_USER" -P "$DEV_SQL_PASSWORD" -Q "SELECT 1 AS connection_test;" -b -o test_output.log
+          cat test_output.log
+        env:
+          DEV_SQL_SERVER: ${{ secrets.DEV_SQL_SERVER }}
+          DEV_SQL_USER: ${{ secrets.DEV_SQL_USER }}
+          DEV_SQL_PASSWORD: ${{ secrets.DEV_SQL_PASSWORD }}
+
+      - name: Run SQL Script on DEV
+        run: |
+          sqlcmd -S "$DEV_SQL_SERVER" -U "$DEV_SQL_USER" -P "$DEV_SQL_PASSWORD" -d master -i setup.sql -b -o sql_output.log
+          cat sql_output.log
+        env:
+          DEV_SQL_SERVER: ${{ secrets.DEV_SQL_SERVER }}
+          DEV_SQL_USER: ${{ secrets.DEV_SQL_USER }}
+          DEV_SQL_PASSWORD: ${{ secrets.DEV_SQL_PASSWORD }}
+
+  prod-deployment:
+    name: Deploy to PROD
+    needs: dev-deployment
+    if: success()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y curl apt-transport-https software-properties-common gnupg ca-certificates
+
+      - name: Setup Microsoft repository and key
+        run: |
+          sudo rm -f /usr/share/keyrings/microsoft-prod.gpg
+          sudo rm -f /etc/apt/sources.list.d/microsoft-prod.list
+          curl -sSL https://packages.microsoft.com/config/ubuntu/$(lsb_release -rs)/prod.list | sudo tee /etc/apt/sources.list.d/mssql-release.list
+          sudo curl -sSL https://packages.microsoft.com/keys/microsoft.asc -o /usr/share/keyrings/microsoft-prod.gpg
+          if [ ! -s /usr/share/keyrings/microsoft-prod.gpg ]; then
+            echo "Error: GPG key file is empty or missing"
+            exit 1
+          fi
+
+      - name: Update apt
+        run: sudo apt-get update
+
+      - name: Install SQL Server tools
+        run: |
+          sudo ACCEPT_EULA=Y apt-get install -y mssql-tools unixodbc-dev
+          echo 'export PATH="$PATH:/opt/mssql-tools/bin"' >> ~/.bashrc
+          source ~/.bashrc
+
+      - name: Test PROD SQL Server connection
+        run: |
+          sqlcmd -S "$PROD_SQL_SERVER" -U "$PROD_SQL_USER" -P "$PROD_SQL_PASSWORD" -Q "SELECT 1 AS connection_test;" -b -o test_output.log
+          cat test_output.log
+        env:
+          PROD_SQL_SERVER: ${{ secrets.PROD_SQL_SERVER }}
+          PROD_SQL_USER: ${{ secrets.PROD_SQL_USER }}
+          PROD_SQL_PASSWORD: ${{ secrets.PROD_SQL_PASSWORD }}
+
+      - name: Run SQL Script on PROD
+        run: |
+          sqlcmd -S "$PROD_SQL_SERVER" -U "$PROD_SQL_USER" -P "$PROD_SQL_PASSWORD" -d master -i setup.sql -b -o sql_output.log
+          cat sql_output.log
+        env:
+          PROD_SQL_SERVER: ${{ secrets.PROD_SQL_SERVER }}
+          PROD_SQL_USER: ${{ secrets.PROD_SQL_USER }}
+          PROD_SQL_PASSWORD: ${{ secrets.PROD_SQL_PASSWORD }}
