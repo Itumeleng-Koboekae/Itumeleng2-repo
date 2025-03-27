@@ -1,6 +1,6 @@
 name: Database Deployment Pipeline
 
-on: [push]
+on: [workflow_dispatch]
 
 jobs:
   dev-deployment:
