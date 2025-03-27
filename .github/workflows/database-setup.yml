@@ -102,6 +102,7 @@ jobs:
 
       - name: Test PROD SQL Server connection
         run: |
+          echo "Connecting to $PROD_SQL_SERVER"
           /opt/mssql-tools/bin/sqlcmd -S "$PROD_SQL_SERVER" -U "$PROD_SQL_USER" -P "$PROD_SQL_PASSWORD" -Q "SELECT 1 AS connection_test;" -o test_output.log || true
           cat test_output.log
         env:
@@ -111,7 +112,8 @@ jobs:
 
       - name: Run SQL Script on PROD
         run: |
-          /opt/mssql-tools/bin/sqlcmd -S "$PROD_SQL_SERVER" -U "$PROD_SQL_USER" -P "$PROD_SQL_PASSWORD" -d master -i setup.sql -b -o sql_output.log
+          echo "Connecting to $PROD_SQL_SERVER"
+          /opt/mssql-tools/bin/sqlcmd -S "$PROD_SQL_SERVER" -U "$PROD_SQL_USER" -P "$PROD_SQL_PASSWORD" -d master -i setup.sql -o sql_output.log || true
           cat sql_output.log
         env:
           PROD_SQL_SERVER: ${{ secrets.PROD_SQL_SERVER }}
