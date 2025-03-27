@@ -17,7 +17,6 @@ jobs:
 
       - name: Add Microsoft SQL Server repository
         run: |
-          # For Ubuntu 24.04, we'll use the 22.04 packages as they're compatible
           UBUNTU_VERSION=$(lsb_release -rs)
           if [[ "$UBUNTU_VERSION" == "24.04" ]]; then
             echo "Using Ubuntu 22.04 packages for compatibility"
@@ -35,17 +34,38 @@ jobs:
           sudo apt-get update
           sudo ACCEPT_EULA=Y apt-get install -y mssql-tools unixodbc-dev
           echo 'export PATH="$PATH:/opt/mssql-tools/bin"' >> $GITHUB_ENV
-          echo 'export PATH="$PATH:/opt/mssql-tools/bin"' >> ~/.bashrc
 
       - name: Verify SQLCMD installation
         run: |
           /opt/mssql-tools/bin/sqlcmd -?
-          echo "PATH contains: $PATH"
+          echo "SQLCMD version check successful"
+
+      - name: Test network connectivity to SQL Server
+        run: |
+          SERVER=$(echo "$DEV_SQL_SERVER" | cut -d',' -f1 | cut -d':' -f1)
+          PORT=$(echo "$DEV_SQL_SERVER" | cut -d',' -f1 | cut -d':' -f2)
+          PORT=${PORT:-1433}  # Default to 1433 if port not specified
+          
+          echo "Testing connection to $SERVER on port $PORT"
+          nc -zvw3 $SERVER $PORT || echo "Network connectivity test failed"
+        env:
+          DEV_SQL_SERVER: ${{ secrets.DEV_SQL_SERVER }}
 
       - name: Test DEV SQL Server connection
         run: |
-          /opt/mssql-tools/bin/sqlcmd -S "$DEV_SQL_SERVER" -U "$DEV_SQL_USER" -P "$DEV_SQL_PASSWORD" -Q "SELECT 1 AS connection_test;" -b -o test_output.log
-          cat test_output.log
+          echo "Attempting to connect to SQL Server..."
+          /opt/mssql-tools/bin/sqlcmd -S "$DEV_SQL_SERVER" -U "$DEV_SQL_USER" -P "$DEV_SQL_PASSWORD" \
+            -Q "SET NOCOUNT ON; SELECT 'Connection successful' AS Result, @@VERSION AS Version;" \
+            -b -o test_output.log
+            
+          if [ $? -eq 0 ]; then
+            echo "Connection successful!"
+            cat test_output.log
+          else
+            echo "Connection failed. Error output:"
+            cat test_output.log
+            exit 1
+          fi
         env:
           DEV_SQL_SERVER: ${{ secrets.DEV_SQL_SERVER }}
           DEV_SQL_USER: ${{ secrets.DEV_SQL_USER }}
@@ -53,8 +73,18 @@ jobs:
 
       - name: Run SQL Script on DEV
         run: |
-          /opt/mssql-tools/bin/sqlcmd -S "$DEV_SQL_SERVER" -U "$DEV_SQL_USER" -P "$DEV_SQL_PASSWORD" -d master -i setup.sql -b -o sql_output.log
-          cat sql_output.log
+          echo "Executing setup script..."
+          /opt/mssql-tools/bin/sqlcmd -S "$DEV_SQL_SERVER" -U "$DEV_SQL_USER" -P "$DEV_SQL_PASSWORD" \
+            -d master -i setup.sql -b -o sql_output.log
+            
+          if [ $? -eq 0 ]; then
+            echo "Script executed successfully:"
+            cat sql_output.log
+          else
+            echo "Script execution failed. Error output:"
+            cat sql_output.log
+            exit 1
+          fi
         env:
           DEV_SQL_SERVER: ${{ secrets.DEV_SQL_SERVER }}
           DEV_SQL_USER: ${{ secrets.DEV_SQL_USER }}
@@ -72,7 +102,7 @@ jobs:
       - name: Install prerequisites
         run: |
           sudo apt-get update
-          sudo apt-get install -y curl gnupg
+          sudo apt-get install -y curl gnupg netcat
 
       - name: Add Microsoft SQL Server repository
         run: |
@@ -93,17 +123,43 @@ jobs:
           sudo apt-get update
           sudo ACCEPT_EULA=Y apt-get install -y mssql-tools unixodbc-dev
           echo 'export PATH="$PATH:/opt/mssql-tools/bin"' >> $GITHUB_ENV
-          echo 'export PATH="$PATH:/opt/mssql-tools/bin"' >> ~/.bashrc
 
       - name: Verify SQLCMD installation
         run: |
           /opt/mssql-tools/bin/sqlcmd -?
-          echo "PATH contains: $PATH"
+          echo "SQLCMD version check successful"
+
+      - name: Test network connectivity to SQL Server
+        run: |
+          SERVER=$(echo "$PROD_SQL_SERVER" | cut -d',' -f1 | cut -d':' -f1)
+          PORT=$(echo "$PROD_SQL_SERVER" | cut -d',' -f1 | cut -d':' -f2)
+          PORT=${PORT:-1433}  # Default to 1433 if port not specified
+          
+          echo "Testing connection to $SERVER on port $PORT"
+          nc -zvw3 $SERVER $PORT || echo "Network connectivity test failed"
+        env:
+          PROD_SQL_SERVER: ${{ secrets.PROD_SQL_SERVER }}
 
       - name: Test PROD SQL Server connection
         run: |
-          /opt/mssql-tools/bin/sqlcmd -S "$PROD_SQL_SERVER" -U "$PROD_SQL_USER" -P "$PROD_SQL_PASSWORD" -Q "SELECT 1 AS connection_test;" -b -o test_output.log
-          cat test_output.log
+          echo "Attempting to connect to PROD SQL Server..."
+          /opt/mssql-tools/bin/sqlcmd -S "$PROD_SQL_SERVER" -U "$PROD_SQL_USER" -P "$PROD_SQL_PASSWORD" \
+            -Q "SET NOCOUNT ON; SELECT 'PROD Connection successful' AS Result, @@VERSION AS Version;" \
+            -b -o test_output.log
+            
+          if [ $? -eq 0 ]; then
+            echo "PROD Connection successful!"
+            cat test_output.log
+          else
+            echo "PROD Connection failed. Error output:"
+            cat test_output.log
+            echo "Troubleshooting tips:"
+            echo "1. Verify the SQL Server is running and accessible"
+            echo "2. Check firewall rules allow connections on port 1433 (or your custom port)"
+            echo "3. Verify the credentials are correct"
+            echo "4. Check if SQL Server is configured for mixed mode authentication"
+            exit 1
+          fi
         env:
           PROD_SQL_SERVER: ${{ secrets.PROD_SQL_SERVER }}
           PROD_SQL_USER: ${{ secrets.PROD_SQL_USER }}
@@ -111,8 +167,18 @@ jobs:
 
       - name: Run SQL Script on PROD
         run: |
-          /opt/mssql-tools/bin/sqlcmd -S "$PROD_SQL_SERVER" -U "$PROD_SQL_USER" -P "$PROD_SQL_PASSWORD" -d master -i setup.sql -b -o sql_output.log
-          cat sql_output.log
+          echo "Executing setup script on PROD..."
+          /opt/mssql-tools/bin/sqlcmd -S "$PROD_SQL_SERVER" -U "$PROD_SQL_USER" -P "$PROD_SQL_PASSWORD" \
+            -d master -i setup.sql -b -o sql_output.log
+            
+          if [ $? -eq 0 ]; then
+            echo "PROD script executed successfully:"
+            cat sql_output.log
+          else
+            echo "PROD script execution failed. Error output:"
+            cat sql_output.log
+            exit 1
+          fi
         env:
           PROD_SQL_SERVER: ${{ secrets.PROD_SQL_SERVER }}
           PROD_SQL_USER: ${{ secrets.PROD_SQL_USER }}
