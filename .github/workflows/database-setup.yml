@@ -10,17 +10,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Detect Ubuntu version
-        id: detect-ubuntu
-        run: |
-          UBUNTU_VERSION=$(lsb_release -rs)
-          echo "UBUNTU_VERSION=${UBUNTU_VERSION}" >> $GITHUB_ENV
-          if [[ "$UBUNTU_VERSION" == "22.04" ]]; then
-            echo "UBUNTU_CODENAME=jammy" >> $GITHUB_ENV
-          elif [[ "$UBUNTU_VERSION" == "24.04" ]]; then
-            echo "UBUNTU_CODENAME=noble" >> $GITHUB_ENV
-          fi
-
       - name: Install prerequisites
         run: |
           sudo apt-get update
@@ -28,31 +17,34 @@ jobs:
 
       - name: Add Microsoft SQL Server repository
         run: |
-          if [[ "${{ env.UBUNTU_VERSION }}" == "24.04" ]]; then
-            echo "Ubuntu 24.04 detected - using 22.04 packages as fallback"
-            REPO_URL="https://packages.microsoft.com/ubuntu/22.04/prod"
+          # For Ubuntu 24.04, we'll use the 22.04 packages as they're compatible
+          UBUNTU_VERSION=$(lsb_release -rs)
+          if [[ "$UBUNTU_VERSION" == "24.04" ]]; then
+            echo "Using Ubuntu 22.04 packages for compatibility"
+            UBUNTU_VERSION="22.04"
             CODENAME="jammy"
           else
-            REPO_URL="https://packages.microsoft.com/ubuntu/${{ env.UBUNTU_VERSION }}/prod"
-            CODENAME="${{ env.UBUNTU_CODENAME }}"
+            CODENAME=$(lsb_release -cs)
           fi
           
           curl -sSL https://packages.microsoft.com/keys/microsoft.asc | sudo gpg --dearmor -o /usr/share/keyrings/microsoft.gpg
-          echo "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft.gpg] $REPO_URL $CODENAME main" | sudo tee /etc/apt/sources.list.d/mssql-release.list
+          echo "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft.gpg] https://packages.microsoft.com/ubuntu/$UBUNTU_VERSION/prod $CODENAME main" | sudo tee /etc/apt/sources.list.d/mssql-release.list
 
       - name: Install SQL Server tools
         run: |
           sudo apt-get update
           sudo ACCEPT_EULA=Y apt-get install -y mssql-tools unixodbc-dev
+          echo 'export PATH="$PATH:/opt/mssql-tools/bin"' >> $GITHUB_ENV
           echo 'export PATH="$PATH:/opt/mssql-tools/bin"' >> ~/.bashrc
-          source ~/.bashrc
 
       - name: Verify SQLCMD installation
-        run: sqlcmd -?
+        run: |
+          /opt/mssql-tools/bin/sqlcmd -?
+          echo "PATH contains: $PATH"
 
       - name: Test DEV SQL Server connection
         run: |
-          sqlcmd -S "$DEV_SQL_SERVER" -U "$DEV_SQL_USER" -P "$DEV_SQL_PASSWORD" -Q "SELECT 1 AS connection_test;" -b -o test_output.log
+          /opt/mssql-tools/bin/sqlcmd -S "$DEV_SQL_SERVER" -U "$DEV_SQL_USER" -P "$DEV_SQL_PASSWORD" -Q "SELECT 1 AS connection_test;" -b -o test_output.log
           cat test_output.log
         env:
           DEV_SQL_SERVER: ${{ secrets.DEV_SQL_SERVER }}
@@ -61,7 +53,7 @@ jobs:
 
       - name: Run SQL Script on DEV
         run: |
-          sqlcmd -S "$DEV_SQL_SERVER" -U "$DEV_SQL_USER" -P "$DEV_SQL_PASSWORD" -d master -i setup.sql -b -o sql_output.log
+          /opt/mssql-tools/bin/sqlcmd -S "$DEV_SQL_SERVER" -U "$DEV_SQL_USER" -P "$DEV_SQL_PASSWORD" -d master -i setup.sql -b -o sql_output.log
           cat sql_output.log
         env:
           DEV_SQL_SERVER: ${{ secrets.DEV_SQL_SERVER }}
@@ -77,17 +69,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Detect Ubuntu version
-        id: detect-ubuntu
-        run: |
-          UBUNTU_VERSION=$(lsb_release -rs)
-          echo "UBUNTU_VERSION=${UBUNTU_VERSION}" >> $GITHUB_ENV
-          if [[ "$UBUNTU_VERSION" == "22.04" ]]; then
-            echo "UBUNTU_CODENAME=jammy" >> $GITHUB_ENV
-          elif [[ "$UBUNTU_VERSION" == "24.04" ]]; then
-            echo "UBUNTU_CODENAME=noble" >> $GITHUB_ENV
-          fi
-
       - name: Install prerequisites
         run: |
           sudo apt-get update
@@ -95,28 +76,33 @@ jobs:
 
       - name: Add Microsoft SQL Server repository
         run: |
-          if [[ "${{ env.UBUNTU_VERSION }}" == "24.04" ]]; then
-            echo "Ubuntu 24.04 detected - using 22.04 packages as fallback"
-            REPO_URL="https://packages.microsoft.com/ubuntu/22.04/prod"
+          UBUNTU_VERSION=$(lsb_release -rs)
+          if [[ "$UBUNTU_VERSION" == "24.04" ]]; then
+            echo "Using Ubuntu 22.04 packages for compatibility"
+            UBUNTU_VERSION="22.04"
             CODENAME="jammy"
           else
-            REPO_URL="https://packages.microsoft.com/ubuntu/${{ env.UBUNTU_VERSION }}/prod"
-            CODENAME="${{ env.UBUNTU_CODENAME }}"
+            CODENAME=$(lsb_release -cs)
           fi
           
           curl -sSL https://packages.microsoft.com/keys/microsoft.asc | sudo gpg --dearmor -o /usr/share/keyrings/microsoft.gpg
-          echo "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft.gpg] $REPO_URL $CODENAME main" | sudo tee /etc/apt/sources.list.d/mssql-release.list
+          echo "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft.gpg] https://packages.microsoft.com/ubuntu/$UBUNTU_VERSION/prod $CODENAME main" | sudo tee /etc/apt/sources.list.d/mssql-release.list
 
       - name: Install SQL Server tools
         run: |
           sudo apt-get update
           sudo ACCEPT_EULA=Y apt-get install -y mssql-tools unixodbc-dev
+          echo 'export PATH="$PATH:/opt/mssql-tools/bin"' >> $GITHUB_ENV
           echo 'export PATH="$PATH:/opt/mssql-tools/bin"' >> ~/.bashrc
-          source ~/.bashrc
+
+      - name: Verify SQLCMD installation
+        run: |
+          /opt/mssql-tools/bin/sqlcmd -?
+          echo "PATH contains: $PATH"
 
       - name: Test PROD SQL Server connection
         run: |
-          sqlcmd -S "$PROD_SQL_SERVER" -U "$PROD_SQL_USER" -P "$PROD_SQL_PASSWORD" -Q "SELECT 1 AS connection_test;" -b -o test_output.log
+          /opt/mssql-tools/bin/sqlcmd -S "$PROD_SQL_SERVER" -U "$PROD_SQL_USER" -P "$PROD_SQL_PASSWORD" -Q "SELECT 1 AS connection_test;" -b -o test_output.log
           cat test_output.log
         env:
           PROD_SQL_SERVER: ${{ secrets.PROD_SQL_SERVER }}
@@ -125,7 +111,7 @@ jobs:
 
       - name: Run SQL Script on PROD
         run: |
-          sqlcmd -S "$PROD_SQL_SERVER" -U "$PROD_SQL_USER" -P "$PROD_SQL_PASSWORD" -d master -i setup.sql -b -o sql_output.log
+          /opt/mssql-tools/bin/sqlcmd -S "$PROD_SQL_SERVER" -U "$PROD_SQL_USER" -P "$PROD_SQL_PASSWORD" -d master -i setup.sql -b -o sql_output.log
           cat sql_output.log
         env:
           PROD_SQL_SERVER: ${{ secrets.PROD_SQL_SERVER }}
