@@ -15,9 +15,15 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y curl gnupg
 
+      - name: Clean up existing Microsoft configurations
+        run: |
+          sudo rm -f /usr/share/keyrings/microsoft*.gpg
+          sudo rm -f /etc/apt/sources.list.d/microsoft*.list
+          sudo rm -f /etc/apt/sources.list.d/mssql*.list
+
       - name: Add Microsoft SQL Server repository
         run: |
-          curl https://packages.microsoft.com/keys/microsoft.asc | sudo gpg --dearmor -o /usr/share/keyrings/microsoft.gpg
+          curl -sSL https://packages.microsoft.com/keys/microsoft.asc | sudo gpg --dearmor -o /usr/share/keyrings/microsoft.gpg
           echo "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft.gpg] https://packages.microsoft.com/ubuntu/$(lsb_release -rs)/prod $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/microsoft.list
 
       - name: Install SQL Server tools
@@ -62,9 +68,15 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y curl gnupg
 
+      - name: Clean up existing Microsoft configurations
+        run: |
+          sudo rm -f /usr/share/keyrings/microsoft*.gpg
+          sudo rm -f /etc/apt/sources.list.d/microsoft*.list
+          sudo rm -f /etc/apt/sources.list.d/mssql*.list
+
       - name: Add Microsoft SQL Server repository
         run: |
-          curl https://packages.microsoft.com/keys/microsoft.asc | sudo gpg --dearmor -o /usr/share/keyrings/microsoft.gpg
+          curl -sSL https://packages.microsoft.com/keys/microsoft.asc | sudo gpg --dearmor -o /usr/share/keyrings/microsoft.gpg
           echo "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft.gpg] https://packages.microsoft.com/ubuntu/$(lsb_release -rs)/prod $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/microsoft.list
 
       - name: Install SQL Server tools
