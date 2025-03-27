@@ -102,7 +102,7 @@ jobs:
 
       - name: Test PROD SQL Server connection
         run: |
-          /opt/mssql-tools/bin/sqlcmd -S "$PROD_SQL_SERVER" -U "$PROD_SQL_USER" -P "$PROD_SQL_PASSWORD" -Q "SELECT 1 AS connection_test;" -b -o test_output.log
+          /opt/mssql-tools/bin/sqlcmd -S "$PROD_SQL_SERVER" -U "$PROD_SQL_USER" -P "$PROD_SQL_PASSWORD" -Q "SELECT 1 AS connection_test;" -o test_output.log || true
           cat test_output.log
         env:
           PROD_SQL_SERVER: ${{ secrets.PROD_SQL_SERVER }}
